@@ -8,19 +8,22 @@ library(dismo)
 library(terra)
 library(sp)
 library(caret)
+library(ENMeval)
+library(raster)
+library(pROC)
 
 # -------------------------------
 # 1. Load data
 # -------------------------------
 
 # Raster predictors (RasterStack or SpatRaster)
-predictors_r <- predictors_r
+predictors_rc <- predictors_rc
 
 # Presence points 
-presence_data <- occurrences_in_agugu
+presence_data_c <- occurrences_in_chal
 
 ##Convert to lon, lat
-presence_data<- presence_data %>%
+presence_data_c <- presence_data_c %>%
   dplyr::select(geometry) %>%
   mutate(
     lon = st_coordinates(geometry)[, 1],
@@ -30,17 +33,17 @@ presence_data<- presence_data %>%
   dplyr::select(lon, lat)
 
 # Ensure they're numeric
-presence_data$lon <- as.numeric(presence_data$lon)
-presence_data$lat <- as.numeric(presence_data$lat)
+presence_data_c$lon <- as.numeric(presence_data_c$lon)
+presence_data_c$lat <- as.numeric(presence_data_c$lat)
 
 # Convert sf to SpatialPoints
-presence_sp <- as_Spatial(occurrences_in_agugu)
+presence_sp_c <- as_Spatial(occurrences_in_chal)
 
 # Absence/background points (data.frame with lon, lat)
-absence_data <- absent_sites_in_agugu
+absence_data_c <- absent_sites_in_chal
 
 ##Convert to lon, lat
-absence_data<- absence_data %>%
+absence_data_c <- absence_data_c %>%
   dplyr::select(geometry) %>%
   mutate(
     lon = st_coordinates(geometry)[, 1],
@@ -50,15 +53,15 @@ absence_data<- absence_data %>%
   dplyr::select(lon, lat)
 
 # Ensure they're numeric
-absence_data$lon <- as.numeric(absence_data$lon)
-absence_data$lat <- as.numeric(absence_data$lat)
+absence_data_c$lon <- as.numeric(absence_data_c$lon)
+absence_data_c$lat <- as.numeric(absence_data_c$lat)
 
 # Convert to SpatialPoints
-presence_sp <- SpatialPoints(presence_data[, c("lon","lat")],
+presence_sp_c <- SpatialPoints(presence_data_c[, c("lon","lat")],
                              proj4string = CRS("+proj=longlat +datum=WGS84"))
 
-absence_sp <- SpatialPoints(
-  as.matrix(absence_data[, c("lon", "lat")]),
+absence_sp_c <- SpatialPoints(
+  as.matrix(absence_data_c[, c("lon", "lat")]),
   proj4string = CRS("+proj=longlat +datum=WGS84")
 )
 
@@ -66,47 +69,45 @@ absence_sp <- SpatialPoints(
 # 4. Align CRS
 # ------------------------------
 # Transform presence and absence points to raster CRS
-presence_sp_utm <- spTransform(presence_sp, CRS(proj4string(predictors_r)))
-absence_sp_utm  <- spTransform(absence_sp, CRS(proj4string(predictors_r)))
+presence_spc_utm <- spTransform(presence_sp_c, CRS(proj4string(predictors_rc)))
+absence_spc_utm  <- spTransform(absence_sp_c, CRS(proj4string(predictors_rc)))
 
-
-
-###3.  
+  
 # Convert SpatialPoints to sf
-presence_sf <- st_as_sf(presence_sp_utm)
+presence_sfc <- st_as_sf(presence_spc_utm)
 
 # Create 500 m buffer
 presence_buf <- st_buffer(presence_sf, dist = 500)
 
 # Convert raster to terra SpatRaster if not already
-predictors_terra <- rast(predictors_r)
+predictors_c_terra <- rast(predictors_rc)
 
 # Crop raster to buffer extent
-predictors_crop <- crop(predictors_terra, vect(presence_buf))
-predictors_crop <- mask(predictors_crop, vect(presence_buf))
+predictors_c_crop <- crop(predictors_c_terra, vect(presence_buf))
+predictors_c_crop <- mask(predictors_c_crop, vect(presence_buf))
 
-#3COnvert back to RasterStack
-predictors_raster <- raster::stack(predictors_crop)
+#Convert back to RasterStack
+predictors_raster_c <- raster::stack(predictors_c_crop)
 
 # ----------------------------
 # 2. Fit MaxEnt with replicates
 # ----------------------------
-maxent_model <- maxent(
-  x = predictors_raster,
-  p = presence_sp_utm,
-  a = absence_sp_utm,
+maxent_model_c <- maxent(
+  x = predictors_raster_c,
+  p = presence_spc_utm,
+  a = absence_spc_utm,
   args = c("replicates=5", "replicatetype=crossvalidate")
 )
 
 # ----------------------------
 # 3. Predict each replicate and average
 # ----------------------------
-pred_full <- raster::predict(predictors_raster, maxent_model@models[[1]])
+pred_full_c <- raster::predict(predictors_raster_c, maxent_model@models[[1]])
 
-pred_list <- list()
+pred_listc <- list()
 for (i in seq_along(maxent_model@models)) {
   # Predict each replicate
-  pred_i <- raster::predict(predictors_raster, maxent_model@models[[i]])
+  pred_i <- raster::predict(predictors_raster_c, maxent_model@models[[i]])
   
   # Force as RasterLayer
   if (!inherits(pred_i, "RasterLayer")) stop("Prediction is not RasterLayer")
@@ -115,48 +116,48 @@ for (i in seq_along(maxent_model@models)) {
 }
 
 # Remove NULLs or invalid layers
-pred_list <- Filter(function(x) inherits(x, "RasterLayer"), pred_list)
+pred_listc <- Filter(function(x) inherits(x, "RasterLayer"), pred_listc)
 
 # Stack
-pred_stack <- stack(pred_list)
+pred_stack_c <- stack(pred_listc)
 
 
-suitability_mean <- raster::stackApply(pred_stack,
-                                       indices = rep(1, nlayers(pred_stack)),
+suitability_mean_c <- raster::stackApply(pred_stack_c,
+                                       indices = rep(1, nlayers(pred_stack_c)),
                                        fun = base::mean)
 
 
 threshold_val <- 0.5
-suitability_binary <- suitability_mean > threshold_val
+suitability_binary_c <- suitability_mean_c > threshold_val
 
 par(mfrow=c(1,2))
-plot(suitability_mean, main="Mean MaxEnt Suitability")
-plot(suitability_binary, main="Binary Presence/Absence Map")
+plot(suitability_mean_c, main="Mean MaxEnt Suitability")
+plot(suitability_binary_c, main="Binary Presence/Absence Map")
 
-# Convert raster to dataframe for ggplot
-suitability_dfm <- as.data.frame(rasterToPoints(suitability_mean))
-colnames(suitability_dfm) <- c("x", "y", "suitability")
+# Convert raster to dataframe for ggplot ploting
+suitability_dfm_c <- as.data.frame(rasterToPoints(suitability_mean_c))
+colnames(suitability_dfm_c) <- c("x", "y", "suitability")
 
 # Reproject shapefile and points to match raster
-df_ib_a_utm <- st_transform(df_ib_a, crs(suitability_mean))
-occurrences_utm <- st_transform(occurrences_sf, crs(suitability_mean))
-absent_sites_utm <- st_transform(absent_sites_in_agugu, crs(suitability_mean))
+df_ib_c_utm <- st_transform(df_ib_c, crs(suitability_mean_c))
+occurrences_c_utm <- st_transform(occurrences_sfc, crs(suitability_mean_c))
+absent_sites_c_utm <- st_transform(absent_sites_in_chal, crs(suitability_mean_c))
 
 # Plot again
 ggplot() +
-  geom_raster(data = suitability_dfm, aes(x = x, y = y, fill = suitability)) +
+  geom_raster(data = suitability_dfm_c, aes(x = x, y = y, fill = suitability)) +
   scale_fill_viridis_c(name = "Suitability") +
-  geom_sf(data = df_ib_a_utm, fill = NA, color = "white", size = 0.6) +
-  geom_sf(data = occurrences_utm, color = "red", size = 2) +
-  geom_sf(data = absent_sites_utm, color = "blue", size = 2) +
+  geom_sf(data = df_ib_c_utm, fill = NA, color = "white", size = 0.6) +
+  geom_sf(data = occurrences_c_utm, color = "red", size = 2) +
+  geom_sf(data = absent_sites_c_utm, color = "blue", size = 2) +
   labs(title = "Habitat Suitability") +
   theme_minimal() +
   coord_sf()
 
 
-
-##Model Evaluation using ROC
-
+##----------------------------------------------------------------------------------------------------------------##
+##Model Evaluation using ROC--------------------------------------------------------------------------------------##
+##----------------------------------------------------------------------------------------------------------------##                     
 # Use training/testing split for evaluation
 presence_valuesc <- raster::extract(suitability_c, occurrences_in_chal)
 background_pointsc <- randomPoints(predictors_rc, 500)  # Generate background points
@@ -167,7 +168,6 @@ labelsc <- c(rep(1, length(presence_valuesc)), rep(0, length(background_valuesc)
 predictionsc <- c(presence_valuesc, background_valuesc)
 
 # Evaluate model performance using AUC
-library(pROC)
 roc_curvec <- roc(labelsc, predictionsc)
 plot(roc_curvec, main = "ROC Curve for MaxEnt Model")
 auc_value <- auc(roc_curvec)  # Calculate AUC value
@@ -196,6 +196,7 @@ chalroc <- ggplot(roc_dfc, aes(x = 1 - specificity, y = sensitivity)) +
 ggsave(paste0(LuDir, '/plots/', Sys.Date(), "/", 'Chalenge ROC curve.pdf'), chalroc, width = 11, height = 10)
 
 
+                     
 # Perform k-fold cross-validation
 library(sp)
 presence_sp <- SpatialPoints(occurrences[, c("lon", "lat")], 
@@ -220,10 +221,6 @@ plot(suitability_cv)
 
 
 ##Evaluate with AIC
-library(ENMeval)
-library(raster)
-
-library(ENMeval)
 
 # Occurrences as matrix or data.frame
 occ_matrix <- as.data.frame(occurrences[, c("lon", "lat")])
@@ -281,11 +278,8 @@ occs_cleanc <- st_coordinates(occs_utmc)
 bg_cellsc <- terra::as.data.frame(predictors_rc, xy = TRUE, cells = FALSE)
 bg_coordsc <- bg_cellsc[, c("x","y")]
 
-# Rename bg columns to match occs
+# Rename background columns to match occurrences
 colnames(bg_coordsc) <- colnames(occs_matc)
-
-
-library(terra)
 
 # Extract predictor values for occurrences
 # occ_vals <- terra::extract(predictors_r, occs_mat)
@@ -297,7 +291,6 @@ bg_valsc <- terra::extract(predictors_rc, bg_coordsc)
 keep_bgc <- complete.cases(bg_valsc)
 bg_cleanc <- bg_coordsc[keep_bgc, ]
 
-library(ENMeval)
 
 en_c <- ENMevaluate(
   occs = occs_cleanc,
@@ -313,7 +306,7 @@ en_c <- ENMevaluate(
   )
 )
 
-#Explore the file(en_a)
+#Explore the file(en_c)
 en_c@results
 
 # Check which model had the best AICc
@@ -473,4 +466,5 @@ combined_plotc <- grid.arrange(p1c, p2c, p3c, p4c, ncol=2)
 
 # Save to PDF
 ggsave(paste0(LuDir, '/plots/', Sys.Date(), "/", "Challenge_Suitability_plots.pdf"), combined_plotc, width = 11, height = 10)
+
 

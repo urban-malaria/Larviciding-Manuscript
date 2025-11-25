@@ -7,9 +7,12 @@ library(dismo)
 library(randomForest)
 library(gbm)
 library(caret)
+library(usdm)
 source("functions.R")
 
 # --- Load rasters by type ---
+##EVI
+evi_dir <- "C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/Raster_files/HLS30m/EVI/Ibadan"
 
 # EVI files
 # List all EVI files
@@ -33,17 +36,13 @@ print(evi_stack)
 plot(evi_stack)
 
 
-# # NDVI files
-# ndvi_files <- list.files(pattern = "^NDVI_.*\\.tif$", full.names = TRUE)
-# ndvi_stack <- stack(ndvi_files)
-
 # NDWI files
-ndWi_dir <- "C:/Users/ebamgboye/Downloads/field_study_ndwi_30m"
+ndWi_dir <- "C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/Raster_files/field_study_ndwi_30m"
 
 # List all NDWI files in that directory
 ndWi_files <- list.files(ndWi_dir, pattern = "\\.tif$", full.names = TRUE)
 
-# Extract month and year from filename (adjust regex based on your naming convention)
+# Extract month and year from filename 
 ndWi_info <- data.frame(
   file = ndWi_files,
   year  = as.numeric(sapply(strsplit(basename(ndWi_files), "_"), `[`, 5)),  # 5th element is year
@@ -62,7 +61,7 @@ plot(ndWi_stack)
 
 
 # Directory where NDMI rasters are stored
-ndmi_dir <- "C:/Users/ebamgboye/Downloads/field_study_ndmi_30m"
+ndmi_dir <- "C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/Raster_files/field_study_ndmi_30m"
 
 # List all NDMI files in that directory
 ndmi_files <- list.files(ndmi_dir, pattern = "\\.tif$", full.names = TRUE)
@@ -73,7 +72,6 @@ ndmi_info <- data.frame(
   year  = as.numeric(sapply(strsplit(basename(ndmi_files), "_"), `[`, 5)),  # 5th element is year
   month = as.numeric(sub("\\.tif$", "", sapply(strsplit(basename(ndmi_files), "_"), `[`, 6)))  # 6th element is month
 )
-
 
 
 # Filter to the months of interest (e.g., May–Aug 2024)
@@ -89,6 +87,7 @@ plot(ndmi_stack)
 # --- Combine all into one stack ---
 #------------------------------------------------------------------------------
 # Convert RasterStack to SpatRaster
+##EVI
 evi_stack_terrac <- rast(evi_stack)
 crs(evi_stack_terrac) <- "EPSG:32631"
 
@@ -96,7 +95,6 @@ crs(evi_stack_terrac) <- "EPSG:32631"
 #df_ib_c_proj <- st_transform(df_ib_c, crs(evi_stack_terra))
 df_ib_c_geom <- df_ib_c_proj["geometry"]
 ward_vectc <- vect(df_ib_c_geom)
-
 
 # Reproject ward polygon to UTM 31N
 ward_vectc_utm <- project(ward_vectc, evi_stack_terrac)
@@ -112,7 +110,7 @@ plot(evi_stack_maskc, main="Cropped + Masked EVI (May-July 2024)")
 lines(ward_vectc_utm, col="blue")
 
 
-# Now crop & mask
+# Crop & mask
 #evi_stack_cropc <- crop(evi_stack_terrac, ward_vectc)
 #evi_stack_maskc <- mask(evi_stack_cropc, ward_vectc)
 
@@ -130,7 +128,7 @@ df_ib_c_projWi <- st_transform(df_ib_c, crs(ndWi_stack_terra))
 df_ib_c_geomWi <- df_ib_c_projWi["geometry"]
 ward_vectc_Wi <- vect(df_ib_c_geomWi)
 
-# Now crop & mask
+# Crop & mask
 ndWi_stack_cropc <- crop(ndWi_stack_terra, ward_vectc_Wi)
 ndWi_stack_maskc <- mask(ndWi_stack_terra, ward_vectc_Wi)
 
@@ -175,7 +173,7 @@ df_ib_c_projntl <- st_transform(df_ib_c, crs(ntl_stack_terra))
 df_ib_c_geomntl <- df_ib_c_projntl["geometry"]
 ward_vectc_ntl <- vect(df_ib_c_geomntl)
 
-# Now crop & mask
+# Crop & mask
 ntl_stack_cropc <- crop(ntl_stack_terra, ward_vectc_ntl)
 #ntl_stack_maskc <- mask(ntl_stack_terra, ward_vectc_ntl)
 
@@ -199,7 +197,7 @@ pop_vals <- terra::extract(popn_den, ward_vectc)
 head(pop_vals)
 summary(pop_vals)
 
-#Now crop & mask
+#Crop & mask
 popnd_stack_cropc <- crop(popn_den, ward_vectc)
 
 popnd_stack_maskc <- mask(popn_den, ward_vectc)
@@ -222,7 +220,7 @@ plot(ward_vectc, add=TRUE)
 
 ##-------------------------------------------------------------------------
 ##Distance water bodies
-dwb <- rast("C:/Users/ebamgboye/Downloads/distance2water_30arcsec.tif")
+dwb <- rast("C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/Raster_files/distance_to_water_bodies/distance2water_30arcsec.tif")
 
 dwb_cropc <- crop(dwb, df_ib_c)
 plot(dwb_cropc)
@@ -247,6 +245,7 @@ sum(!st_is_valid(bfp_oyo))
 # Fix invalid geometries
 bfp_oyo <- st_make_valid(bfp_oyo)
 
+#Plot to see extent
 ggplot(bfp_oyo) +
   geom_sf(aes(fill = landuse), color = NA) +
   scale_fill_viridis_d(option = "plasma") +
@@ -258,6 +257,7 @@ st_crs(bfp_oyo) <- st_crs(df_ib_c)
 
 chal_bfp <- st_intersection(bfp_oyo, st_union(df_ib_c))
 
+#Plot to see extent
 ggplot(chal_bfp) +
   geom_sf(aes(fill = landuse), color = NA) +
   scale_fill_viridis_d(option = "plasma") +
@@ -271,10 +271,10 @@ chal_vect <- vect(chal_bfp)
 # Encode landuse categories as numeric codes
 chal_vect$landuse_code <- as.numeric(as.factor(chal_vect$landuse))
 
-# Use one of your predictor rasters as template (ensures same extent/res)
+# Ensure rasters are in the same extent/res) using EVI
 templatec <- evi_stack_cropc[[1]]  # first layer of your EVI stack
 
-# Make sure chal_vect is in the same CRS as your template
+# Make sure chal_vect is in the same CRS as template
 chal_vect_utm <- project(chal_vect, crs(templatec))
 
 # Crop template to chal_vect extent
@@ -294,7 +294,7 @@ print(landuse_key)
 ##--------------------------------------------------------------------------
 #LST
 ##--------------------------------------------------------------------------
-lst_cropc <- rast("C:/Users/ebamgboye/OneDrive - Loyola University Chicago/Documents/IB_KA_field_study-main/IB_KA_field_study-main/challenge_lstraster.tif")
+lst_cropc <- rast("C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/kano_ibadan/kano_ibadan_ento/challenge_lstraster.tif")
 
 
 ##------------------------------------------------------------------------------
@@ -306,7 +306,7 @@ chal_bf_stack
 
 
 --------------------------------------------------------------------------------
-# 1. Make sure all rasters have the same CRS
+# 1. Make sure all rasters have the same CRS (use EVI as template)
 ndWi_stack_cropc <- project(ndWi_stack_cropc, crs(evi_stack_cropc))
 ndmi_stack_cropc <- project(ndmi_stack_cropc, crs(evi_stack_cropc))
 ntl_stack_cropc <- project(ntl_cropc, crs(evi_stack_cropc))
@@ -329,13 +329,6 @@ chal_bf_stack_resc <- resample(chal_bf_stack_cropc, evi_stack_cropc, method="bil
 ##Stack
 predictors_c <- c(evi_stack_cropc, ndWi_stack_resc, ndmi_stack_resc, ntl_stack_resc, popdn_stack_resc,
                   dwb_stack_resc, lst_stack_resc, landuse_stack_resc, chal_bf_stack_resc)
-
-# predictors_c1 <- c(evi_stack_cropc, ndWi_stack_resc, ndmi_stack_resc)
-# 
-# #predictorsE <- c(evi_stack_crop, ndmi_stack_res)
-# 
-# # Check
-# predictors
 
 # Check results
 print(predictors_c)
@@ -371,7 +364,7 @@ chalcorr <- ggcorrplot(cor_matc,
 ggsave(paste0(LuDir, '/plots/', Sys.Date(), "/", 'Correlation Matrix for Challenge.pdf'), chalcorr, width = 11, height = 10)
 
 
-library(usdm)
+##VIF as correlation check
 
 vif_resultc <- vifstep(predictors_c, th = 5)
 vif_resultc
@@ -398,7 +391,8 @@ writeRaster(predictors_c_subset,
             filename = "predictors_c_subset.tif", 
             overwrite = TRUE)
 
-predictors_c_subset <- rast("C:/Users/ebamgboye/OneDrive - Loyola University Chicago/Documents/IB_KA_field_study-main/IB_KA_field_study-main/predictors_c_subset.tif")
+predictors_c_subset <- rast("C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/kano_ibadan/kano_ibadan_ento/predictors_c_subset.tif")
+
 
 
 # # Drop layers by name
@@ -406,3 +400,5 @@ predictors_c_subset <- rast("C:/Users/ebamgboye/OneDrive - Loyola University Chi
 #                                                                   "gpw_v4_population_density_rev11_2020_1_deg") ]]
 # 
 # plot(env_stack_selected)
+
+

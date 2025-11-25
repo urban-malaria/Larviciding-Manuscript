@@ -40,12 +40,12 @@ plot(evi_stack)
 # ndvi_stack <- stack(ndvi_files)
 
 # NDWI files
-ndWi_dir <- "C:/Users/ebamgboye/Downloads/field_study_ndwi_30m"
+ndWi_dir <- "C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/Raster_files/field_study_ndwi_30m"
 
 # List all NDWI files in that directory
 ndWi_files <- list.files(ndWi_dir, pattern = "\\.tif$", full.names = TRUE)
 
-# Extract month and year from filename (adjust regex based on your naming convention)
+# Extract month and year from filename 
 ndWi_info <- data.frame(
   file = ndWi_files,
   year  = as.numeric(sapply(strsplit(basename(ndWi_files), "_"), `[`, 5)),  # 5th element is year
@@ -64,12 +64,12 @@ plot(ndWi_stack)
 
 
 # Directory where NDMI rasters are stored
-ndmi_dir <- "C:/Users/ebamgboye/Downloads/field_study_ndmi_30m"
+ndmi_dir <- "C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/Raster_files/field_study_ndmi_30m"
 
 # List all NDMI files in that directory
 ndmi_files <- list.files(ndmi_dir, pattern = "\\.tif$", full.names = TRUE)
 
-# Extract month and year from filename (adjust regex based on your naming convention)
+# Extract month and year from filename 
 ndmi_info <- data.frame(
   file = ndmi_files,
   year  = as.numeric(sapply(strsplit(basename(ndmi_files), "_"), `[`, 5)),  # 5th element is year
@@ -94,8 +94,6 @@ plot(ndmi_stack)
 #------------------------------------------------------------------------------
 
 ntl_rast <- rast("C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/Raster_files/night_timel_lights/VIIRS_NTL_2024_Nigeria.tif")
-
-#ntl_rast21 <- rast("C:/Users/DELL/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/Raster_files/night_timel_lights/VIIRS_NTL_Nigeria_2021.tif")
 
 plot(ntl_rast)
 
@@ -131,7 +129,7 @@ plot(ag_vect, add = TRUE, border = "red", lwd = 2)
 #------------------------------------------------------------------------------
 ##Distance to Water Bodies
 #------------------------------------------------------------------------------
-dwb <- rast("C:/Users/ebamgboye/Downloads/distance2water_30arcsec.tif")
+dwb <- rast("C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/Raster_files/distance_to_water_bodies/distance2water_30arcsec.tif")
 
 # Crop raster to polygon extent
 dwb_crop <- crop(dwb, df_ib_a)
@@ -141,7 +139,7 @@ plot(ag_vect, add = TRUE, border = "red", lwd = 2)
 
 
 #LST
-agugu_lst <- rast("C:/Users/ebamgboye/OneDrive - Loyola University Chicago/Documents/IB_KA_field_study-main/IB_KA_field_study-main/agugu_lstraster.tif")
+agugu_lst <- rast("C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/kano_ibadan/kano_ibadan_ento/agugu_lstraster.tif")
 plot(agugu_lst)
 plot(ag_vect, add = TRUE, border = "red", lwd = 2)
 
@@ -149,13 +147,6 @@ plot(ag_vect, add = TRUE, border = "red", lwd = 2)
 ##------------------------------------------------------------------------------
 #Land Use
 ##------------------------------------------------------------------------------
-# hq_rast <- rast("C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/Raster_files/housing/2019_Nature_Africa_Housing_2015_NGA.tiff")
-# 
-# # Crop raster to polygon extent
-# hq_crop <- crop(hq_rast, df_ib_a)
-# plot(hq_crop)
-# ag_vect <- vect(df_ib_a)  # convert sf → SpatVector
-# plot(ag_vect, add = TRUE, border = "red", lwd = 2)
 
 bfp <- st_read("C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/building_footprints/nigeria_footprints/nigeria blocks 2/Nigeria_Blocks_V1.shp")
 
@@ -290,7 +281,6 @@ popn_den_crop  <-  project(popn_den_crop,  crs(evi_stack_crop))
 dwb_crop       <-  project(dwb_crop,  crs(evi_stack_crop))
 landusea_stack_crop  <- project(landusea_raster,  crs(evi_stack_crop))
 
-#maxtemp_stack_crop  <- project(maxtemp_stack_crop,  crs(evi_stack_crop))
 
 # 2. Align extents and resolution
 ndWi_stack_res <- resample(ndWi_stack_crop, evi_stack_crop, method="bilinear")
@@ -302,7 +292,7 @@ dwb_res  <- resample(dwb_crop,  evi_stack_crop, method="bilinear")
 landusea_stack_res  <- resample(landusea_stack_crop,  evi_stack_crop, method="bilinear")
 
 
-# 3. (Optional) Combine into one multilayer stack for analysis
+# 3. Combine into one multilayer stack for analysis
 all_env_vars <- c(evi_stack_crop, ndWi_stack_res, ndmi_stack_res,
                   ntl_stack_res, popn_den_res, dwb_res, lst_stack_res, landusea_stack_res)
 
@@ -327,7 +317,6 @@ high_cor <- which(abs(cor_mat) > 0.7 & abs(cor_mat) < 1, arr.ind = TRUE)
 
 high_cor
 
-library(ggcorrplot)
 
 aggcorr <- ggcorrplot(cor_mat, 
            hc.order = TRUE,       # hierarchical clustering
@@ -339,8 +328,8 @@ aggcorr <- ggcorrplot(cor_mat,
 
 ggsave(paste0(LuDir, '/plots/', Sys.Date(), "/", 'Correlation Matrix for Agugu.pdf'), aggcorr, width = 11, height = 10)
 
-library(usdm)
 
+##Use VIF to cross check
 vif_result <- vifstep(all_env_vars, th = 5)
 vif_result
 
@@ -356,32 +345,29 @@ vars_keep <- c("EVI.1","EVI.2", "EVI.3",
 
 ##
 # subset the SpatRaster
-predictors_c_subset <- predictors_c[[vars_keep]]
+predictors_a_subset <- all_env_vars[[vars_keep]]
 
 # check result
-predictors_c_subset
+predictors_a_subset
 
 # Save as multi-layer GeoTIFF
-writeRaster(predictors_c_subset, 
-            filename = "predictors_c_subset.tif", 
+writeRaster(predictors_a_subset, 
+            filename = "predictors_a_subset.tif", 
             overwrite = TRUE)
 
 # Example: keep only selected layers
 env_stack_selected <- dropLayer(env_stack, c("NDMI.1", "NDWI.3"))
-
 plot(env_stack_selected)
 
-
-predictors_c_subset <- rast("C:/Users/DELL/OneDrive - Loyola University Chicago/Documents/IB_KA_field_study-main/IB_KA_field_study-main/predictors_c_subset.tif")
-
-
-
-
+# Save as multi-layer GeoTIFF
+writeRaster(env_stack_selected, 
+            filename = "env_stack_selected.tif", 
+            overwrite = TRUE)
 
 
+env_stack_selected <- rast("C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/kano_ibadan/kano_ibadan_ento/env_stack_selected.tif")
 
-
-
+predictors_a_subset <- rast("C:/Users/ebamgboye/Urban Malaria Proj Dropbox/urban_malaria/data/nigeria/kano_ibadan/kano_ibadan_ento/predictors_a_subset.tif")
 
 
 
@@ -393,91 +379,5 @@ predictors_c_subset <- rast("C:/Users/DELL/OneDrive - Loyola University Chicago/
 
 
 
-
-
-
-
-
-
-
-
-### Compute mean of EVI, NDMI and NDWI across its layers
-library(terra)
-
-# Compute mean of EVI across layers
-evi_mean <- app(evi_stack_crop, fun = base::mean, na.rm = TRUE)
-names(evi_mean) <- "EVI_mean"
-
-# Compute mean of NDWI across layers
-ndwi_mean <- app(ndWi_stack_res, fun = base::mean, na.rm = TRUE)
-names(ndwi_mean) <- "NDWI_mean"
-
-# Compute mean of NDMI across layers
-ndmi_mean <- app(ndmi_stack_res, fun = base::mean, na.rm = TRUE)
-names(ndmi_mean) <- "NDMI_mean"
-
-# Inspect
-evi_mean
-ndwi_mean
-ndmi_mean
-
-# 3. (Optional) Combine into one multilayer stack for analysis
-all_env_vars1 <- c(evi_mean, ndwi_mean, ndmi_mean, 
-                  lst_stack_res, ntl_stack_res)
-
-# # 3. Now combine
-# predictors <- c(evi_stack_crop, ndWi_stack_res, ndmi_stack_res)
-# 
-# predictorsE <- c(evi_stack_crop, ndmi_stack_res)
-
-
-
-
-##New environmental variables
-library(terra)
-
-library(terra)
-
-# Step 0: Convert template to lon/lat if it was in UTM
-# Convert RasterStack (raster package) to SpatRaster (terra)
-evi_terra <- rast(evi_stack)   # now evi_terra is a SpatRaster
-crs(evi_terra) <- "EPSG:32632"
-
-template_ll <- project(evi_terra, "EPSG:4326", method="bilinear")
-# Reproject to lon/lat (EPSG:4326)
-template_ll <- project(evi_terra, "EPSG:4326", method="bilinear")
-
-
-# Crop each raster to template extent first
-ntl_crop  <- crop(ntl_rast, template_ll)
-lst_crop  <- crop(lst_rast, template_ll)
-popn_crop <- crop(popn_den_crop, template_ll)
-ndwi_crop <- crop(ndWi_stack_crop, template_ll)
-ndmi_crop <- crop(ndmi_stack_crop, template_ll)
-
-# Then project
-ntl_proj  <- project(ntl_crop, template_ll, method="bilinear")
-lst_proj  <- project(lst_crop, template_ll, method="bilinear")
-popn_proj <- project(popn_crop, template_ll, method="bilinear")
-ndwi_proj <- project(ndwi_crop, template_ll, method="bilinear")
-ndmi_proj <- project(ndmi_crop, template_ll, method="bilinear")
-
-# Resample (to exactly match template_ll)
-ntl_res  <- resample(ntl_proj, template_ll, method="bilinear")
-lst_res  <- resample(lst_proj, template_ll, method="bilinear")
-popn_res <- resample(popn_proj, template_ll, method="bilinear")
-ndwi_res <- resample(ndwi_proj, template_ll, method="bilinear")
-ndmi_res <- resample(ndmi_proj, template_ll, method="bilinear")
-
-# Stack everything
-env_stack <- c(template_ll, ndwi_res, ndmi_res, ntl_res, lst_res, popn_res)
-
-
-# Step 3: Stack everything
-env_stack <- c(template_ll, ndwi_res, ndmi_res, ntl_res, lst_res, popn_res)
-
-# Step 4: Inspect
-env_stack
-plot(env_stack[[1]])
 
 

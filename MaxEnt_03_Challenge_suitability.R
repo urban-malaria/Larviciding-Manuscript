@@ -1,6 +1,13 @@
 Sys.setenv(JAVA_HOME="C:/Program Files/Eclipse Adoptium/jdk-21.0.7.6-hotspot")
-library(rJava)  # try loading rJava manually
+library(rJava)  
+library(terra)
 library(patchwork)
+library(dismo)
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(forcats)
 
 
 #1. Convert SpatRaster to RasterStack for MaxEnt
@@ -13,8 +20,6 @@ occ_coordsc <- st_coordinates(occurrences_in_chal)  # gives X = lon, Y = lat
 # Convert sf to matrix in raster CRS
 occ_coordsc <- st_coordinates(st_transform(occurrences_in_chal, crs(predictors_rc)))
 # Get raster extent
-ext(predictors_rc)
-# Or, using terra:
 terra::ext(predictors_rc)
 
 # Extract values for all layers
@@ -26,9 +31,7 @@ occ_valsc
 valid_idxc <- complete.cases(occ_valsc[, -1])  # exclude ID column
 occ_coords_validc <- occ_coordsc[valid_idxc, ]
 
-
-
-# 3. Run MaxEnt
+#3. Run MaxEnt
 maxent_model_c <- maxent(
   x = predictors_rc, 
   p = occ_coords_validc,
@@ -37,12 +40,9 @@ maxent_model_c <- maxent(
 # 4. View summary
 print(maxent_model_c)
 
-library(dismo)
-
 # ---------------------------
 # 4. Jackknife test
 # ---------------------------
-library(dismo)
 
 # Re-run MaxEnt with jackknife enabled
 jkc <- maxent(predictors_rc, occ_coords_validc, args = c("jackknife=true"))
@@ -60,7 +60,7 @@ response(jkc, var = "avg_rad")
 # Convert results into a dataframe
 resc <- as.data.frame(jkc_results)
 
-# Extract variable names (they appear in the result names)
+# Extract variable names as they appear in the result names
 varsc <- gsub("\\.contribution.*", "", grep("\\.contribution", rownames(resc), value = TRUE))
 
 # Build a tidy dataframe of jackknife results
@@ -77,8 +77,7 @@ jkc_df <- lapply(varsc, function(v) {
 jk_dfc <- jkc_df %>%
   mutate(all_vars = as.numeric(resc["Regularized.training.gain", 1]))
 
-library(tidyr)
-
+##Rename variable names
 jk_dfc <- jk_dfc %>%
   mutate(variable = recode(variable,
                            "EVI.2"  = "EVI(June 2024)",
@@ -121,13 +120,6 @@ ggplot(jkc_long, aes(x = variable, y = gain, fill = condition)) +
 
 
 ##Another Plot
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-
-# Assume jk_long is your long-format jackknife results with columns:
-# Variable, Condition (with_only / without / all_vars), Gain
-
 # Separate out "all_vars"
 jk_sepc <- jkc_long %>% 
   filter(condition != "all_vars")
@@ -152,10 +144,6 @@ ggsave(paste0(LuDir, '/plots/', Sys.Date(), "/", 'Jack n Knife Test for Challeng
 
 
 ##Replot for Manuscript
-library(dplyr)
-library(ggplot2)
-library(forcats)
-
 # Reorder variables by 'with_only' gain
 jk_sepc <- jk_sepc %>% filter(condition !="all_vars") %>%  
   group_by(variable) %>%
@@ -182,6 +170,7 @@ jk_chal <- ggplot(jk_sepc, aes(x = gain, y = variable, fill = condition)) +
 
 ggsave(paste0(LuDir, '/plots/', Sys.Date(), "/", 'Jack n Knife Test for challenge.pdf'), jk_chal , width = 8, height = 11)
 
+
 ##Evaluate Variable Importance direction 
 # Open PDF device
 pdf("Challenge jackknife_responses.pdf", width = 11, height = 16)
@@ -192,14 +181,12 @@ response(jkc, var = "NDWI.1")
 
 response(jkc, var = "angle_mean")
 
-
-
-
 # Close PDF device
 dev.off()
 
 #Open PDF automatically
 shell.exec("Agugu jackknife_responses.pdf")
+
 
 
 ###-----------------------------------------------------------------------------
@@ -222,26 +209,9 @@ plot(ward_vectc_mi, border="blue", add=TRUE)
 suitability_dfc <- as.data.frame(rasterToPoints(suitability_c))
 colnames(suitability_dfc) <- c("x", "y", "suitability")
 
-# Make sure your points are sf objects
-# occurrences_sf -> presence points
-# absent_sites_in_agugu -> absence points
-
-# ggplot() +
-#   #geom_sf(data = df_ib_a, fill = NA, color = "white")+
-#   geom_raster(data = suitability_dfc, aes(x = x, y = y, fill = suitability)) +
-#   scale_fill_viridis_c(name = "Suitability") +  # nicer color scale
-#   geom_sf(data = occurrences_sf, color = "red", size = 2) +
-#   geom_sf(data = absent_sites_in_agugu, color = "blue", size = 2) +
-#   labs(title = "Habitat Suitability") +
-#   theme_minimal() +
-#   coord_sf()
-
-
 # Reproject shapefile and points to match raster
 df_ib_c_utm <- st_transform(df_ib_c, crs(suitability_c))
 occurrences_utmc <- st_transform(occurrences_in_chal, crs(suitability_c))
-
-#absent_sites_utm <- st_transform(absent_sites_in_agugu, crs(suitability))
 
 # Plot again
 ggplot() +
@@ -287,9 +257,7 @@ ggsave(paste0(LuDir, '/plots/', Sys.Date(), "/", 'Habitat Suitability for Challe
 
 #Convert suitability plot to categories
 
-library(terra)
-
-# Example: load raster
+# Load raster
 suitability_rastc <- suitability_c
 
 # Create categories
@@ -317,7 +285,7 @@ suitability_catc <- reclassify(suitability_rastc, mc)
 #      main = "Suitability Categories (0 = Very Low,1 = Low, 2 = Medium, 3 = High)")
 
 #Replot raster with ggplot
-# 1. Crop/mask raster to shapefile extent
+# 1. Mask raster to shapefile extent
 suitability_maskedc <- mask(suitability_catc, df_ib_c_utm)
 
 # 2. Convert raster to dataframe
@@ -428,7 +396,6 @@ library(RColorBrewer)
 #============================#
 #   1. Load Raster Data      #
 #============================#
-# Replace with your raster file
 suitability_rast <- raster("suitability_raster.tif")
 
 # Extract raster values into a dataframe
@@ -443,10 +410,10 @@ suit_values <- suit_values %>%
 #============================#
 #  2. Classify by Percentile #
 #============================#
-# Example: 75th percentile cutoff for "High" class
-q25 <- quantile(suit_values_clnc$value, 0.25)
-q50 <- quantile(suit_values_clnc$value, 0.50)
-q75 <- quantile(suit_values_clnc$value, 0.75)
+# 75th percentile cutoff for "High" class
+#q25 <- quantile(suit_values_clnc$value, 0.25)
+#q50 <- quantile(suit_values_clnc$value, 0.50)
+#q75 <- quantile(suit_values_clnc$value, 0.75)
 
 q25 <- 0.1403995
 q50 <- 0.3497512
@@ -507,7 +474,7 @@ levels_order <- c("Very Low", "Low", "Moderate", "High", "Very High", "Extreme")
 suit_values_clnc$class <- factor(suit_values_clnc$class, levels = levels_order)
 ci_summary$class <- factor(ci_summary$class, levels = levels_order)
 
-# Now plot
+# Make plot
 ggplot(suit_values_clnc, aes(x = class, y = value, fill = class)) +
   geom_boxplot(alpha = 0.6, outlier.shape = NA) +
   #geom_jitter(width = 0.2, size = 1, alpha = 0.7, color = "black") +
@@ -528,9 +495,7 @@ ggplot(suit_values_clnc, aes(x = class, y = value, fill = class)) +
   scale_fill_brewer(palette = "Set2")
 
 
-
-library(dplyr)
-
+##Check again
 # Categorize suitability
 suit_summary <- suit_values_clnc %>%
   mutate(
@@ -543,3 +508,4 @@ suit_summary <- suit_values_clnc %>%
   )
 
 suit_summary
+

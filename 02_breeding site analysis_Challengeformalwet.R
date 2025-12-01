@@ -4,7 +4,10 @@ library(geosphere)
 library(sf)
 library(purrr)
 
-# Example breeding sites dataset (simulated for demonstration)
+##Load breeding site data(from data preparation scripts)
+lav_bs_wet <- lav_df_wet
+
+# Extract for Formal (Challenge) Wet Season
 lav_bs_formal_wet <- lav_bs_wet %>% 
   dplyr::filter(`Settlement Type` == "Formal")%>% 
   filter(!`site_label` %in% c(272, 147, 98, 71))
@@ -187,4 +190,5 @@ Chal_summary <- data.frame(
 Chal_summary$season <- "Wet"
 
 Chal_summary$settlment <- "Formal"
+
 

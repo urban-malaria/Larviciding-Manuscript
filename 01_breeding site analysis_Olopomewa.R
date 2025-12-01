@@ -5,7 +5,7 @@ library(sf)
 library(purrr)
 
 ##Load breeding site data(from data preparation scripts)
-lav_bs_dry <- lav_df-dry
+lav_bs_dry <- lav_df_dry
 
 # Extract for Formal settlement(Olopomewa)
 lav_bs_formal_dry <- lav_bs_dry %>% 
@@ -166,4 +166,5 @@ Olop_summary <- data.frame(
 Olop_summary$season <- "Dry"
 
 Olop_summary$settlment <- "Formal"
+
 

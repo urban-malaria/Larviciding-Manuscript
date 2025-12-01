@@ -4,10 +4,10 @@ library(geosphere)
 library(sf)
 library(purrr)
 
-# Load breeding sites dataset 
+##Load breeding site data(from data preparation scripts)
+lav_bs_dry <- lav_df-dry
 
-
-##Extract for Slums
+##Extract for Slums (Agugu) Dry Season
 lav_bs_slum_dry <- lav_bs_dry %>% 
   dplyr::filter(`Settlement Type` == "Slum") %>% 
   filter(!`site_label` %in% c(17, 27, 40))
@@ -170,6 +170,7 @@ Agudry_summary <- data.frame(
 Agudry_summary$season <- "Dry"
 
 Agudry_summary$settlment <- "Slum"
+
 
 
 

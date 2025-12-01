@@ -4,7 +4,10 @@ library(geosphere)
 library(sf)
 library(purrr)
 
-# Example breeding sites dataset (simulated for demonstration)
+##Load breeding site data(from data preparation scripts)
+lav_bs_wet <- lav_df_wet
+
+# Extract for Slum (Agugu) Wet Season
 lav_bs_slum_wet <- lav_bs_wet %>% 
   dplyr::filter(`Settlement Type` == "Slum")
 
@@ -162,3 +165,4 @@ Aguwet_summary <- data.frame(
 Aguwet_summary$season <- "Wet"
 
 Aguwet_summary$settlment <- "Slum"
+

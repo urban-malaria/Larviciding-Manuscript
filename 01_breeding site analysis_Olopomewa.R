@@ -4,7 +4,10 @@ library(geosphere)
 library(sf)
 library(purrr)
 
-# Example breeding sites dataset (simulated for demonstration)
+##Load breeding site data(from data preparation scripts)
+lav_bs_dry <- lav_df-dry
+
+# Extract for Formal settlement(Olopomewa)
 lav_bs_formal_dry <- lav_bs_dry %>% 
   dplyr::filter(`Settlement Type` == "Formal")%>% 
   filter(!`site_label` %in% c(22, 6, 9))
@@ -163,3 +166,4 @@ Olop_summary <- data.frame(
 Olop_summary$season <- "Dry"
 
 Olop_summary$settlment <- "Formal"
+

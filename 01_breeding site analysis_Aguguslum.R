@@ -5,7 +5,7 @@ library(sf)
 library(purrr)
 
 ##Load breeding site data(from data preparation scripts)
-lav_bs_dry <- lav_df-dry
+lav_bs_dry <- lav_df_dry
 
 ##Extract for Slums (Agugu) Dry Season
 lav_bs_slum_dry <- lav_bs_dry %>% 
@@ -170,6 +170,7 @@ Agudry_summary <- data.frame(
 Agudry_summary$season <- "Dry"
 
 Agudry_summary$settlment <- "Slum"
+
 
 
 

@@ -4,7 +4,10 @@ library(geosphere)
 library(sf)
 library(purrr)
 
-# Example breeding sites dataset (simulated for demonstration)
+# Load breeding sites dataset 
+
+
+##Extract for Slums
 lav_bs_slum_dry <- lav_bs_dry %>% 
   dplyr::filter(`Settlement Type` == "Slum") %>% 
   filter(!`site_label` %in% c(17, 27, 40))
@@ -167,5 +170,6 @@ Agudry_summary <- data.frame(
 Agudry_summary$season <- "Dry"
 
 Agudry_summary$settlment <- "Slum"
+
 
 
